@@ -210,21 +210,40 @@ def get_nd2_list(ops):
     if ops["look_one_level_down"], then all nd2"s in all folders + one level down
     """
     froot = ops["data_path"]
-    fold_list = ops["data_path"]
-    fsall = []
-    nfs = 0
-    first_tiffs = []
-    for k, fld in enumerate(fold_list):
-        fs, ftiffs = list_files(fld, ops["look_one_level_down"], ["*.nd2"])
-        fsall.extend(fs)
-        first_tiffs.extend(list(ftiffs))
-    if len(fs) == 0:
-        print("Could not find any nd2 files")
-        raise Exception("no nd2s")
+    # use a user-specified list of nd2 files (specified in "tiff_list")
+    if "tiff_list" in ops:
+        fsall = []
+        for nd2_file in ops["tiff_list"]:
+            assert nd2_file.endswith(".nd2"), f"{nd2_file} is not an nd2 file"
+            fsall.append(os.path.join(froot[0], nd2_file))
+        ops["first_tiffs"] = np.zeros((len(fsall),), dtype="bool")
+        ops["first_tiffs"][0] = True
     else:
-        ops["first_tiffs"] = np.array(first_tiffs).astype("bool")
-        print("** Found %d nd2 files - converting to binary **" % (len(fsall)))
+        if len(froot) == 1:
+            if "subfolders" in ops and len(ops["subfolders"]) > 0:
+                fold_list = []
+                for folder_down in ops["subfolders"]:
+                    fold = os.path.join(froot[0], folder_down)
+                    fold_list.append(fold)
+            else:
+                fold_list = ops["data_path"]
+        else:
+            fold_list = froot
+        fsall = []
+        nfs = 0
+        first_tiffs = []
+        for k, fld in enumerate(fold_list):
+            fs, ftiffs = list_files(fld, ops["look_one_level_down"], ["*.nd2"])
+            fsall.extend(fs)
+            first_tiffs.extend(list(ftiffs))
+        if len(fs) == 0:
+            print("Could not find any nd2 files")
+            raise Exception("no nd2s")
+        else:
+            ops["first_tiffs"] = np.array(first_tiffs).astype("bool")
+    print("** Found %d nd2 files - converting to binary **" % (len(fsall)))
     return fsall, ops
+
 
 def get_dcimg_list(ops):
     """ make list of dcimg files to process
